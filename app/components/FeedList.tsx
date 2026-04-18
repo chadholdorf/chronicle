@@ -62,7 +62,7 @@ export default function FeedList({
       <nav className="px-2 pt-2 space-y-0.5">
         <button
           onClick={() => onSelectFeed(null)}
-          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+          className={`w-full flex items-center justify-between px-3 py-3 md:py-2 rounded-lg text-sm transition-colors ${
             isAllSelected
               ? "bg-[--accent-light] text-[--accent] font-medium"
               : "text-[--text-secondary] hover:bg-[--bg-tertiary]"
@@ -80,7 +80,7 @@ export default function FeedList({
 
         <button
           onClick={onSelectStarred}
-          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+          className={`w-full flex items-center gap-2 px-3 py-3 md:py-2 rounded-lg text-sm transition-colors ${
             isStarredSelected
               ? "bg-[--accent-light] text-[--accent] font-medium"
               : "text-[--text-secondary] hover:bg-[--bg-tertiary]"
@@ -119,7 +119,7 @@ export default function FeedList({
           <button
             key={feed.id}
             onClick={() => onSelectFeed(feed.id)}
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors group ${
+            className={`w-full flex items-center gap-2 px-3 py-3 md:py-2 rounded-lg text-sm transition-colors group ${
               selectedFeedId === feed.id
                 ? "bg-[--accent-light] text-[--accent] font-medium"
                 : "text-[--text-secondary] hover:bg-[--bg-tertiary]"
