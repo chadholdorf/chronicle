@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/lib/db";
+import { db, ensureSchema } from "@/app/lib/db";
 import { feeds } from "@/db/schema";
 import { desc } from "drizzle-orm";
 
 export async function GET() {
   try {
+    await ensureSchema();
     const allFeeds = await db.select().from(feeds).orderBy(desc(feeds.createdAt));
 
     const now = new Date().toISOString();

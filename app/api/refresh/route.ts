@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/lib/db";
+import { db, ensureSchema } from "@/app/lib/db";
 import { feeds } from "@/db/schema";
 import { refreshFeed } from "@/app/lib/rss";
 import { eq, or, lt, isNull } from "drizzle-orm";
@@ -8,6 +8,7 @@ const STALE_THRESHOLD_MINUTES = 30;
 
 export async function POST(request: Request) {
   try {
+    await ensureSchema();
     const body = await request.json().catch(() => ({})) as { feedId?: string; force?: boolean };
 
     let feedsToRefresh;

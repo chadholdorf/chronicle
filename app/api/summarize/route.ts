@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/lib/db";
+import { db, ensureSchema } from "@/app/lib/db";
 import { items } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { summarizeArticle } from "@/app/lib/claude";
 
 export async function POST(request: Request) {
   try {
+    await ensureSchema();
     const { itemId } = await request.json() as { itemId: string };
 
     if (!itemId) {

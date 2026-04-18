@@ -1,25 +1,35 @@
-import { createClient } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import { createClient, type Client } from "@libsql/client";
+import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 import * as schema from "@/db/schema";
 
-const isLocal = !process.env.TURSO_DATABASE_URL;
-
-const client = createClient(
-  isLocal
-    ? { url: "file:chronicle.db" }
-    : {
-        url: process.env.TURSO_DATABASE_URL!,
-        authToken: process.env.TURSO_AUTH_TOKEN,
-      }
-);
-
+let _client: Client | null = null;
+let _db: LibSQLDatabase<typeof schema> | null = null;
 let _initialized = false;
 
-async function initSchema() {
+function getClient(): Client {
+  if (!_client) {
+    const tursoUrl = process.env.TURSO_DATABASE_URL?.trim();
+    _client = createClient(
+      tursoUrl
+        ? { url: tursoUrl, authToken: process.env.TURSO_AUTH_TOKEN?.trim() }
+        : { url: "file:chronicle.db" }
+    );
+  }
+  return _client;
+}
+
+function getDb(): LibSQLDatabase<typeof schema> {
+  if (!_db) {
+    _db = drizzle(getClient(), { schema });
+  }
+  return _db;
+}
+
+async function ensureSchema() {
   if (_initialized) return;
   _initialized = true;
 
-  await client.executeMultiple(`
+  await getClient().executeMultiple(`
     CREATE TABLE IF NOT EXISTS feeds (
       id TEXT PRIMARY KEY,
       url TEXT NOT NULL UNIQUE,
@@ -60,7 +70,17 @@ async function initSchema() {
   `);
 }
 
-export const db = drizzle(client, { schema });
+// Lazy proxy — avoids creating the client during Next.js build/module collection phase
+export const db = new Proxy({} as LibSQLDatabase<typeof schema>, {
+  get(_target, prop) {
+    const realDb = getDb();
+    const value = realDb[prop as keyof typeof realDb];
+    if (typeof value === "function") {
+      return value.bind(realDb);
+    }
+    return value;
+  },
+});
 
-// Call initSchema on first import — safe to call multiple times
-initSchema().catch((err) => console.error("Schema init failed:", err));
+// Exported so API routes can call it before queries
+export { ensureSchema };

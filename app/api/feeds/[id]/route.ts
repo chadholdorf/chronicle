@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/lib/db";
+import { db, ensureSchema } from "@/app/lib/db";
 import { feeds } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -8,6 +8,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    await ensureSchema();
     await db.delete(feeds).where(eq(feeds.id, params.id));
     return NextResponse.json({ success: true });
   } catch (err) {

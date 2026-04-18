@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/lib/db";
+import { db, ensureSchema } from "@/app/lib/db";
 import { items, feeds } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
 export async function POST(request: Request) {
   try {
+    await ensureSchema();
     const { feedId } = await request.json() as { feedId?: string };
 
     const condition = feedId ? and(eq(items.feedId, feedId), eq(items.isRead, false)) : eq(items.isRead, false);

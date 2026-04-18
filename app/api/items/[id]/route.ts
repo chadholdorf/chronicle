@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/lib/db";
+import { db, ensureSchema } from "@/app/lib/db";
 import { items, feeds } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 
@@ -8,6 +8,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    await ensureSchema();
     const body = await request.json() as {
       isRead?: boolean;
       isStarred?: boolean;

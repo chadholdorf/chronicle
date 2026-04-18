@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/lib/db";
+import { db, ensureSchema } from "@/app/lib/db";
 import { items, feeds, digests } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { generateDailyDigest } from "@/app/lib/claude";
@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 
 export async function GET() {
   try {
+    await ensureSchema();
     const [latest] = await db
       .select()
       .from(digests)
@@ -22,6 +23,7 @@ export async function GET() {
 
 export async function POST() {
   try {
+    await ensureSchema();
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
         { error: "ANTHROPIC_API_KEY is not configured" },

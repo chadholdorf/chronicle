@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/lib/db";
+import { db, ensureSchema } from "@/app/lib/db";
 import { feeds } from "@/db/schema";
 import { addFeed } from "@/app/lib/rss";
 import { desc } from "drizzle-orm";
 
 export async function GET() {
   try {
+    await ensureSchema();
     const allFeeds = await db.select().from(feeds).orderBy(desc(feeds.createdAt));
     return NextResponse.json(allFeeds);
   } catch (err) {
@@ -16,6 +17,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    await ensureSchema();
     const { url } = await request.json() as { url: string };
 
     if (!url || typeof url !== "string") {

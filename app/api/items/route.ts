@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/lib/db";
+import { db, ensureSchema } from "@/app/lib/db";
 import { items, feeds } from "@/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 
 export async function GET(request: Request) {
   try {
+    await ensureSchema();
     const { searchParams } = new URL(request.url);
     const feedId = searchParams.get("feedId");
     const starred = searchParams.get("starred") === "true";
