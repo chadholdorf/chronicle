@@ -8,9 +8,11 @@ interface ReadingPaneProps {
   item: ItemWithFeed | null;
   onToggleStar: (itemId: string, starred: boolean) => void;
   onSummaryGenerated: (itemId: string, summary: string) => void;
+  onBack?: () => void;
+  showBackButton?: boolean;
 }
 
-export default function ReadingPane({ item, onToggleStar, onSummaryGenerated }: ReadingPaneProps) {
+export default function ReadingPane({ item, onToggleStar, onSummaryGenerated, onBack, showBackButton }: ReadingPaneProps) {
   const [summarizing, setSummarizing] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
@@ -68,6 +70,16 @@ export default function ReadingPane({ item, onToggleStar, onSummaryGenerated }: 
         {/* Meta bar */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
+            {showBackButton && onBack && (
+              <button
+                onClick={onBack}
+                className="md:hidden p-1 -ml-1 text-[--text-muted] hover:text-[--text-primary] transition-colors"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="15 18 9 12 15 6"/>
+                </svg>
+              </button>
+            )}
             {item.feedFaviconUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={item.feedFaviconUrl} alt="" width={16} height={16} className="w-4 h-4 rounded-sm" />

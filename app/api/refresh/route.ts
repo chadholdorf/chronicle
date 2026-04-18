@@ -3,7 +3,6 @@ import { db } from "@/app/lib/db";
 import { feeds } from "@/db/schema";
 import { refreshFeed } from "@/app/lib/rss";
 import { eq, or, lt, isNull } from "drizzle-orm";
-import { sql } from "drizzle-orm";
 
 const STALE_THRESHOLD_MINUTES = 30;
 

@@ -68,12 +68,15 @@ AI features degrade gracefully — the app works without `ANTHROPIC_API_KEY`, bu
 
 These are the highest-value missing features, roughly in priority order:
 
-1. **Keyboard shortcuts** — `j/k` to navigate items, `Enter` to open, `s` to star, `r` to mark read, `o` to open original. Google Reader muscle memory.
-2. **OPML import/export** — Import your existing subscriptions from Feedly or other readers; export for backup.
-3. **Mobile responsive layout** — The three-panel layout needs to collapse to a single-panel drawer nav on small screens.
-4. **Starred items export** — Download starred items as JSON or Markdown.
-5. **Feed categories/folders** — Group feeds in the sidebar (needs a new `categories` table and a `feed.category_id` FK).
-6. **Full-text search** — SQLite FTS5 extension would make this straightforward.
+1. **Starred items export** — Download starred items as JSON or Markdown.
+2. **Feed categories/folders** — Group feeds in the sidebar (needs a new `categories` table and a `feed.category_id` FK).
+3. **Full-text search** — SQLite FTS5 extension would make this straightforward.
+
+## Recently completed
+
+- **Keyboard shortcuts** — `j/k/n/p` navigate, `s` star, `r` toggle read, `o` open original, `Shift+A` mark all read, `?` help modal. Listener in `page.tsx`, skips when inputs focused or modals open.
+- **OPML import/export** — Import via `/api/opml/import` (parses XML, returns feed list; client subscribes sequentially with progress bar). Export via `/api/opml/export` (generates OPML 2.0 XML). UI in OPMLModal, button in FeedList bottom actions.
+- **Mobile responsive layout** — `mobilePanel` state in `page.tsx` drives which panel is visible below `md` (768px). Feed list → item list → reading pane with back buttons. Desktop unchanged.
 
 ## Design system
 
@@ -100,12 +103,17 @@ app/
     refresh/        POST (refresh stale or all feeds)
     summarize/      POST (Claude summary, cached)
     digest/         GET (latest digest), POST (generate new)
+    opml/
+      import/       POST (parse OPML XML, return feed list)
+      export/       GET (generate OPML 2.0 XML download)
   components/
-    FeedList.tsx    Left panel
-    ItemList.tsx    Center panel
-    ReadingPane.tsx Right panel
+    FeedList.tsx    Left panel (+ Import/Export button)
+    ItemList.tsx    Center panel (+ mobile back button)
+    ReadingPane.tsx Right panel (+ mobile back button)
     AddFeedModal.tsx
     DigestModal.tsx
+    KeyboardShortcutsModal.tsx  (? key help overlay)
+    OPMLModal.tsx   Import/Export UI with progress
   lib/
     db.ts           Drizzle client + schema init
     rss.ts          Feed fetching, parsing, refresh

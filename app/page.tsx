@@ -6,9 +6,14 @@ import ItemList, { type ItemWithFeed } from "./components/ItemList";
 import ReadingPane from "./components/ReadingPane";
 import AddFeedModal from "./components/AddFeedModal";
 import DigestModal from "./components/DigestModal";
+import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
+import OPMLModal from "./components/OPMLModal";
 import type { Feed, Digest } from "@/db/schema";
 
 type View = { type: "all" } | { type: "feed"; feedId: string } | { type: "starred" };
+
+// Mobile panel navigation
+type MobilePanel = "feeds" | "items" | "reading";
 
 export default function Home() {
   const [feeds, setFeeds] = useState<Feed[]>([]);
@@ -17,9 +22,12 @@ export default function Home() {
   const [view, setView] = useState<View>({ type: "all" });
   const [showAddFeed, setShowAddFeed] = useState(false);
   const [showDigest, setShowDigest] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showOPML, setShowOPML] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
   const [lastDigest, setLastDigest] = useState<Digest | null>(null);
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>("feeds");
 
   useEffect(() => {
     loadFeeds();
@@ -36,6 +44,110 @@ export default function Home() {
     refreshFeeds(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Don't capture when typing in inputs or modals are open
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable ||
+        showAddFeed ||
+        showDigest ||
+        showOPML
+      ) {
+        return;
+      }
+
+      // ? — toggle shortcuts help (allow closing too)
+      if (e.key === "?") {
+        e.preventDefault();
+        setShowShortcuts((prev) => !prev);
+        return;
+      }
+
+      // Escape closes shortcuts modal
+      if (e.key === "Escape" && showShortcuts) {
+        setShowShortcuts(false);
+        return;
+      }
+
+      // Don't handle shortcuts while shortcuts modal is open (except ? and Escape above)
+      if (showShortcuts) return;
+
+      // j/n — next item
+      if (e.key === "j" || e.key === "n") {
+        e.preventDefault();
+        navigateItems(1);
+        return;
+      }
+
+      // k/p — previous item
+      if (e.key === "k" || e.key === "p") {
+        e.preventDefault();
+        navigateItems(-1);
+        return;
+      }
+
+      // s — star/unstar
+      if (e.key === "s") {
+        e.preventDefault();
+        if (selectedItem) {
+          handleToggleStar(selectedItem.id, !selectedItem.isStarred);
+        }
+        return;
+      }
+
+      // r — toggle read/unread
+      if (e.key === "r") {
+        e.preventDefault();
+        if (selectedItem) {
+          handleToggleRead(selectedItem.id, !selectedItem.isRead);
+        }
+        return;
+      }
+
+      // o — open original
+      if (e.key === "o") {
+        e.preventDefault();
+        if (selectedItem) {
+          window.open(selectedItem.url, "_blank", "noopener,noreferrer");
+        }
+        return;
+      }
+
+      // Shift+A — mark all read
+      if (e.key === "A" && e.shiftKey) {
+        e.preventDefault();
+        handleMarkAllRead();
+        return;
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, selectedItem, showAddFeed, showDigest, showShortcuts, showOPML]);
+
+  function navigateItems(direction: number) {
+    if (items.length === 0) return;
+
+    if (!selectedItem) {
+      handleSelectItem(items[0]);
+      setMobilePanel("reading");
+      return;
+    }
+
+    const currentIndex = items.findIndex((i) => i.id === selectedItem.id);
+    const nextIndex = currentIndex + direction;
+
+    if (nextIndex >= 0 && nextIndex < items.length) {
+      handleSelectItem(items[nextIndex]);
+      setMobilePanel("reading");
+    }
+  }
 
   async function loadFeeds() {
     try {
@@ -93,6 +205,7 @@ export default function Home() {
 
   const handleSelectItem = useCallback(async (item: ItemWithFeed) => {
     setSelectedItem(item);
+    setMobilePanel("reading");
 
     if (!item.isRead) {
       setItems((prev) =>
@@ -115,6 +228,34 @@ export default function Home() {
       }
     }
   }, []);
+
+  async function handleToggleRead(itemId: string, isRead: boolean) {
+    setItems((prev) =>
+      prev.map((i) => (i.id === itemId ? { ...i, isRead } : i))
+    );
+    setSelectedItem((prev) => (prev?.id === itemId ? { ...prev, isRead } : prev));
+
+    // Update feed unread count
+    const item = items.find((i) => i.id === itemId);
+    if (item) {
+      const delta = isRead ? -1 : 1;
+      setFeeds((prev) =>
+        prev.map((f) =>
+          f.id === item.feedId ? { ...f, unreadCount: Math.max(0, f.unreadCount + delta) } : f
+        )
+      );
+    }
+
+    try {
+      await fetch(`/api/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isRead }),
+      });
+    } catch {
+      // non-critical
+    }
+  }
 
   async function handleMarkAllRead() {
     const feedId = view.type === "feed" ? view.feedId : undefined;
@@ -172,25 +313,39 @@ export default function Home() {
     return "All Items";
   }
 
+  function handleSelectFeed(feedId: string | null) {
+    setView(feedId ? { type: "feed", feedId } : { type: "all" });
+    setMobilePanel("items");
+  }
+
+  function handleSelectStarred() {
+    setView({ type: "starred" });
+    setMobilePanel("items");
+  }
+
   const noFeedsYet = feeds.length === 0 && !isLoadingItems && !isRefreshing;
 
   return (
     <div className="flex h-screen overflow-hidden bg-[--bg-primary]">
-      <FeedList
-        feeds={feeds}
-        selectedFeedId={view.type === "feed" ? view.feedId : null}
-        onSelectFeed={(feedId) => setView(feedId ? { type: "feed", feedId } : { type: "all" })}
-        onSelectStarred={() => setView({ type: "starred" })}
-        isStarredSelected={view.type === "starred"}
-        onAddFeed={() => setShowAddFeed(true)}
-        onRefreshAll={() => refreshFeeds(true)}
-        onDailyDigest={() => setShowDigest(true)}
-        isRefreshing={isRefreshing}
-        lastDigestAt={lastDigest ? new Date(lastDigest.createdAt) : null}
-      />
+      {/* Feed List — always visible on desktop, conditional on mobile */}
+      <div className={`${mobilePanel === "feeds" ? "flex" : "hidden"} md:flex flex-col w-full md:w-60 md:flex-shrink-0`}>
+        <FeedList
+          feeds={feeds}
+          selectedFeedId={view.type === "feed" ? view.feedId : null}
+          onSelectFeed={handleSelectFeed}
+          onSelectStarred={handleSelectStarred}
+          isStarredSelected={view.type === "starred"}
+          onAddFeed={() => setShowAddFeed(true)}
+          onRefreshAll={() => refreshFeeds(true)}
+          onDailyDigest={() => setShowDigest(true)}
+          onImportExport={() => setShowOPML(true)}
+          isRefreshing={isRefreshing}
+          lastDigestAt={lastDigest ? new Date(lastDigest.createdAt) : null}
+        />
+      </div>
 
       {noFeedsYet ? (
-        <div className="flex-1 flex flex-col items-center justify-center bg-[--bg-secondary] text-center px-8">
+        <div className={`flex-1 flex-col items-center justify-center bg-[--bg-secondary] text-center px-8 ${mobilePanel === "feeds" ? "hidden md:flex" : "flex"}`}>
           <div className="mb-8 opacity-20">
             <svg width="80" height="80" viewBox="0 0 24 24" fill="currentColor" className="text-[--accent] mx-auto">
               <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19.01 7.38 20 6.18 20C4.98 20 4 19.01 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1z"/>
@@ -207,19 +362,30 @@ export default function Home() {
         </div>
       ) : (
         <>
-          <ItemList
-            items={items}
-            selectedItemId={selectedItem?.id ?? null}
-            onSelectItem={handleSelectItem}
-            onMarkAllRead={handleMarkAllRead}
-            viewTitle={getViewTitle()}
-            isLoading={isLoadingItems}
-          />
-          <ReadingPane
-            item={selectedItem}
-            onToggleStar={handleToggleStar}
-            onSummaryGenerated={handleSummaryGenerated}
-          />
+          {/* Item List — always visible on desktop, conditional on mobile */}
+          <div className={`${mobilePanel === "items" ? "flex" : "hidden"} md:flex flex-col w-full md:w-96 md:flex-shrink-0`}>
+            <ItemList
+              items={items}
+              selectedItemId={selectedItem?.id ?? null}
+              onSelectItem={handleSelectItem}
+              onMarkAllRead={handleMarkAllRead}
+              viewTitle={getViewTitle()}
+              isLoading={isLoadingItems}
+              onBack={() => setMobilePanel("feeds")}
+              showBackButton={true}
+            />
+          </div>
+
+          {/* Reading Pane — always visible on desktop, conditional on mobile */}
+          <div className={`${mobilePanel === "reading" ? "flex" : "hidden"} md:flex flex-col flex-1`}>
+            <ReadingPane
+              item={selectedItem}
+              onToggleStar={handleToggleStar}
+              onSummaryGenerated={handleSummaryGenerated}
+              onBack={() => setMobilePanel("items")}
+              showBackButton={true}
+            />
+          </div>
         </>
       )}
 
@@ -239,6 +405,20 @@ export default function Home() {
           onClose={() => setShowDigest(false)}
           onDigestCreated={(digest) => setLastDigest(digest)}
           lastDigest={lastDigest}
+        />
+      )}
+
+      {showShortcuts && (
+        <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />
+      )}
+
+      {showOPML && (
+        <OPMLModal
+          onClose={() => setShowOPML(false)}
+          onImportComplete={async () => {
+            await loadFeeds();
+            await loadItems();
+          }}
         />
       )}
     </div>

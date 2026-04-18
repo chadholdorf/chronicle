@@ -11,6 +11,7 @@ interface FeedListProps {
   onAddFeed: () => void;
   onRefreshAll: () => void;
   onDailyDigest: () => void;
+  onImportExport: () => void;
   isRefreshing: boolean;
   lastDigestAt: Date | null;
 }
@@ -24,6 +25,7 @@ export default function FeedList({
   onAddFeed,
   onRefreshAll,
   onDailyDigest,
+  onImportExport,
   isRefreshing,
   lastDigestAt,
 }: FeedListProps) {
@@ -40,7 +42,7 @@ export default function FeedList({
   const isAllSelected = !selectedFeedId && !isStarredSelected;
 
   return (
-    <aside className="w-60 flex-shrink-0 bg-[--bg-secondary] border-r border-[--border] flex flex-col h-full overflow-hidden">
+    <aside className="w-full md:w-60 flex-shrink-0 bg-[--bg-secondary] border-r border-[--border] flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="px-4 pt-5 pb-4 border-b border-[--border]">
         <div className="flex items-center gap-2">
@@ -197,6 +199,18 @@ export default function FeedList({
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
           </svg>
           <span className="text-xs">{isRefreshing ? "Refreshing…" : "Refresh All"}</span>
+        </button>
+
+        <button
+          onClick={onImportExport}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[--text-secondary] hover:bg-[--bg-tertiary] transition-colors"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span className="text-xs">Import / Export</span>
         </button>
       </div>
     </aside>
