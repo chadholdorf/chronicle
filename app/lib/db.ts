@@ -1,25 +1,25 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
 import * as schema from "@/db/schema";
-import path from "path";
 
-const DB_PATH = path.join(process.cwd(), "chronicle.db");
+const isLocal = !process.env.TURSO_DATABASE_URL;
 
-let _db: ReturnType<typeof drizzle> | null = null;
+const client = createClient(
+  isLocal
+    ? { url: "file:chronicle.db" }
+    : {
+        url: process.env.TURSO_DATABASE_URL!,
+        authToken: process.env.TURSO_AUTH_TOKEN,
+      }
+);
 
-function getDb() {
-  if (!_db) {
-    const sqlite = new Database(DB_PATH);
-    sqlite.pragma("journal_mode = WAL");
-    sqlite.pragma("foreign_keys = ON");
-    _db = drizzle(sqlite, { schema });
-    initSchema(sqlite);
-  }
-  return _db;
-}
+let _initialized = false;
 
-function initSchema(sqlite: Database.Database) {
-  sqlite.exec(`
+async function initSchema() {
+  if (_initialized) return;
+  _initialized = true;
+
+  await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS feeds (
       id TEXT PRIMARY KEY,
       url TEXT NOT NULL UNIQUE,
@@ -60,8 +60,7 @@ function initSchema(sqlite: Database.Database) {
   `);
 }
 
-export const db = new Proxy({} as ReturnType<typeof drizzle>, {
-  get(_target, prop) {
-    return getDb()[prop as keyof ReturnType<typeof drizzle>];
-  },
-});
+export const db = drizzle(client, { schema });
+
+// Call initSchema on first import — safe to call multiple times
+initSchema().catch((err) => console.error("Schema init failed:", err));

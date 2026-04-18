@@ -61,7 +61,7 @@ export async function refreshFeed(feedId: string, url: string): Promise<number> 
       .insert(items)
       .values(newItems)
       .onConflictDoNothing();
-    inserted = result.changes ?? 0;
+    inserted = (result as { rowsAffected?: number; changes?: number }).rowsAffected ?? (result as { changes?: number }).changes ?? 0;
   }
 
   await db

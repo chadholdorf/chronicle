@@ -10,13 +10,6 @@ const nextConfig = {
       },
     ],
   },
-  // Ensure better-sqlite3 is not bundled by webpack (it's a native module)
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals = [...(config.externals ?? []), "better-sqlite3"];
-    }
-    return config;
-  },
 };
 
 export default nextConfig;
